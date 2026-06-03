@@ -15,6 +15,7 @@ weather, local, international and finance news via AI.
 ## Workflow Structure
 Schedule Trigger → Weather + RSS feeds → AI filtering 
 → Merge → Final AI Agent → Telegram
+<img width="1693" height="1008" alt="image" src="https://github.com/user-attachments/assets/06e764f7-846e-4580-9d0e-a20772820b7b" />
 
 ## How to Use
 1. Import the .json file into your n8n instance
