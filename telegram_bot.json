@@ -1,0 +1,669 @@
+{
+  "name": "telegram bot",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=flw&lang=en",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        192,
+        -416
+      ],
+      "id": "e176c4cf-3139-4825-8131-c1f039b8de58",
+      "name": "HTTP Request (weather)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "52a9797a-71c8-4e18-b7e1-64f63b9934f0",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=en",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        192,
+        -240
+      ],
+      "id": "138b0b6d-6ffa-4e9f-8730-14c47eca59ba",
+      "name": "HTTP Request (Temperature)"
+    },
+    {
+      "parameters": {
+        "url": "=https://rthk.hk/rthk/news/rss/e_expressnews_elocal.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        -64
+      ],
+      "id": "f6ab469c-94a3-4386-885f-415aeabc3d1e",
+      "name": "RSS Read (local new RTHK)"
+    },
+    {
+      "parameters": {
+        "url": "https://rthk.hk/rthk/news/rss/e_expressnews_einternational.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        176,
+        208
+      ],
+      "id": "99dbc1d7-b60c-44eb-9089-a5445f4b5a6a",
+      "name": "RSS Read (international new RTHK )"
+    },
+    {
+      "parameters": {
+        "url": "https://rthk.hk/rthk/news/rss/e_expressnews_efinance.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        176,
+        464
+      ],
+      "id": "8d553d9c-0418-4569-8579-2e605e32f220",
+      "name": "RSS Read (finance new RTHK )1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here are today's {{ $json.news_count }} local Hong Kong news items.\nPlease select the 2 most important stories and return them as a JSON array.\n\nNews items:\n{{ JSON.stringify($json.news_items, null, 2) }}",
+        "options": {
+          "systemMessage": "=You are a professional Hong Kong local news editor with deep understanding \nof public impact, social importance, and journalistic value.\n\nYour job is to analyze a list of local Hong Kong news headlines and select \nthe 2 most important stories based on:\n- Public impact (affects many people's daily life)\n- Urgency (time-sensitive or breaking news)\n- Social / political significance\n- Economic relevance to Hong Kong residents\n\nSTRICT OUTPUT RULES:\n- Return ONLY a raw JSON array, nothing else\n- No explanation, no markdown, no code blocks, no preamble\n- Must follow this exact format:\n\n[\n  {\n    \"rank\": 1,\n    \"title\": \"original title here\",\n    \"link\": \"original url here\",\n    \"pubDate\": \"original date here\",\n    \"content\": \"original content here\",\n    \"reason\": \"one sentence explaining why this is important\"\n  },\n  {\n    \"rank\": 2,\n    \"title\": \"original title here\",\n    \"link\": \"original url here\",\n    \"pubDate\": \"original date here\",\n    \"content\": \"original content here\",\n    \"reason\": \"one sentence explaining why this is important\"\n  }\n]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        608,
+        -64
+      ],
+      "id": "e79484fd-9400-47bc-9637-0705b9092482",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "grok-4.20-0309-non-reasoning",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        608,
+        80
+      ],
+      "id": "49ca6ebe-5aa8-4b45-a3f7-0096ef7f646b",
+      "name": "xAI Grok Chat Model",
+      "credentials": {
+        "xAiApi": {
+          "id": "YOUR_XAI_CREDENTIAL_ID",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all 20 items into one single JSON\nconst allItems = $input.all().map(item => ({\n  title: item.json.title,\n  link: item.json.link,\n  pubDate: item.json.pubDate,\n  content: item.json.contentSnippet || item.json.content\n}));\n\nreturn [{\n  json: {\n    news_count: allItems.length,\n    news_items: allItems\n  }\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -64
+      ],
+      "id": "faed8ba0-c586-485c-aa25-dc290fdd6f0e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\n\n// Clean and parse the escaped JSON string\nconst parsed = JSON.parse(raw);\n\nreturn [{ \n  json: { \n    local_top2: parsed \n  } \n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -64
+      ],
+      "id": "e7c4556d-8bbb-4f0d-baac-0983722c1bbb",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all 20 items into one single JSON\nconst allItems = $input.all().map(item => ({\n  title: item.json.title,\n  link: item.json.link,\n  pubDate: item.json.pubDate,\n  content: item.json.contentSnippet || item.json.content\n}));\n\nreturn [{\n  json: {\n    news_count: allItems.length,\n    news_items: allItems\n  }\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        208
+      ],
+      "id": "47b7c2e3-b99f-4164-9bd8-1100f8247bd8",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here are today's {{ $json.news_count }} international news items.\nPlease select the 2 most important stories and return them as a JSON array.\n\nNews items:\n{{ JSON.stringify($json.news_items, null, 2) }}",
+        "options": {
+          "systemMessage": "You are a professional international news editor with deep understanding \nof global affairs, geopolitics, and world events that matter to Hong Kong readers.\n\nYour job is to analyze a list of international news headlines and select \nthe 2 most important stories based on:\n- Global impact (affects international relations or world economy)\n- Relevance to Hong Kong (trade, finance, geopolitical connections)\n- Urgency (breaking news or rapidly developing situations)\n- Significance to Asia-Pacific region\n\nSTRICT OUTPUT RULES:\n- Return ONLY a raw JSON array, nothing else\n- No explanation, no markdown, no code blocks, no preamble\n- Must follow this exact format:\n\n[\n  {\n    \"rank\": 1,\n    \"title\": \"original title here\",\n    \"link\": \"original url here\",\n    \"pubDate\": \"original date here\",\n    \"content\": \"original content here\",\n    \"reason\": \"one sentence explaining why this is important\"\n  },\n  {\n    \"rank\": 2,\n    \"title\": \"original title here\",\n    \"link\": \"original url here\",\n    \"pubDate\": \"original date here\",\n    \"content\": \"original content here\",\n    \"reason\": \"one sentence explaining why this is important\"\n  }\n]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        592,
+        208
+      ],
+      "id": "0ad7f958-0df6-4af5-8699-7c65c4930b87",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "model": "grok-4.20-0309-non-reasoning",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        592,
+        352
+      ],
+      "id": "1a196cc0-c931-4f0a-b0ad-eb90503a5a43",
+      "name": "xAI Grok Chat Model2",
+      "credentials": {
+        "xAiApi": {
+          "id": "YOUR_XAI_CREDENTIAL_ID",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\n\nreturn [{ json: { international_top2: parsed } }]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        208
+      ],
+      "id": "d2fb103b-1b34-4a81-a548-1100f0bb865e",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all 20 items into one single JSON\nconst allItems = $input.all().map(item => ({\n  title: item.json.title,\n  link: item.json.link,\n  pubDate: item.json.pubDate,\n  content: item.json.contentSnippet || item.json.content\n}));\n\nreturn [{\n  json: {\n    news_count: allItems.length,\n    news_items: allItems\n  }\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        464
+      ],
+      "id": "5f1068d1-0401-46ac-b584-12ff7728ef9c",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here are today's {{ $json.news_count }} finance news items.\nPlease select the 2 most important stories and return them as a JSON array.\n\nNews items:\n{{ JSON.stringify($json.news_items, null, 2) }}",
+        "options": {
+          "systemMessage": "You are a professional financial news editor with deep expertise in \nHong Kong and global financial markets, economics, and business affairs.\n\nYour job is to analyze a list of finance news headlines and select \nthe 2 most important stories based on:\n- Market impact (affects stock, property, crypto, or commodity markets)\n- Economic policy changes (interest rates, regulations, government policy)\n- Business significance (major corporate moves, IPOs, mergers, bankruptcies)\n- Relevance to Hong Kong investors and businesses\n- Global financial ripple effects on Hong Kong economy\n\nSTRICT OUTPUT RULES:\n- Return ONLY a raw JSON array, nothing else\n- No explanation, no markdown, no code blocks, no preamble\n- Must follow this exact format:\n\n[\n  {\n    \"rank\": 1,\n    \"title\": \"original title here\",\n    \"link\": \"original url here\",\n    \"pubDate\": \"original date here\",\n    \"content\": \"original content here\",\n    \"reason\": \"one sentence explaining why this is important\"\n  },\n  {\n    \"rank\": 2,\n    \"title\": \"original title here\",\n    \"link\": \"original url here\",\n    \"pubDate\": \"original date here\",\n    \"content\": \"original content here\",\n    \"reason\": \"one sentence explaining why this is important\"\n  }\n]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        592,
+        464
+      ],
+      "id": "5d5fc864-4164-4a70-a7b0-e7a50d1cf3a7",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "model": "grok-4.20-0309-non-reasoning",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        592,
+        608
+      ],
+      "id": "a290d697-7828-4c7c-b2b5-ee821c7afe99",
+      "name": "xAI Grok Chat Model3",
+      "credentials": {
+        "xAiApi": {
+          "id": "YOUR_XAI_CREDENTIAL_ID",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\n\nreturn [{ json: { finance_top2: parsed } }]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        464
+      ],
+      "id": "4761ef09-63c5-4aa5-a749-1f389c0db43a",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\n// Get urban temp (Observatory as reference)\nconst obsTemp = d.temperature.data.find(t => t.place === \"Hong Kong Observatory\");\nconst maxTemp = Math.max(...d.temperature.data.map(t => t.value));\nconst minTemp = Math.min(...d.temperature.data.map(t => t.value));\nconst hottest = d.temperature.data.find(t => t.value === maxTemp);\n\nreturn [{\n  json: {\n    current_conditions: {\n      urban_temp: `${obsTemp.value}°C`,\n      highest_temp: `${maxTemp}°C at ${hottest.place}`,\n      lowest_temp: `${minTemp}°C`,\n      humidity: `${d.humidity.data[0].value}%`,\n      uv_index: `${d.uvindex.data[0].value} (${d.uvindex.data[0].desc})`,\n      rainfall_last_hour: \"0mm across all districts\",\n      warning: d.warningMessage[0] || \"None\",\n      updated_at: d.updateTime\n    }\n  }\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -240
+      ],
+      "id": "464f386f-b1c0-45d4-8131-2010584aa0b1",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        -352
+      ],
+      "id": "34b91471-7460-4d0d-a573-7ffebf66bc74",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is today's briefing data. Please prepare my morning briefing now.\n\n{{ JSON.stringify($json, null, 2) }}",
+        "options": {
+          "systemMessage": "You are a professional personal assistant delivering a daily morning briefing for a Hong Kong resident.\n\nYou will receive structured data containing:\n- Current weather conditions and forecast\n- 2 local Hong Kong news stories\n- 2 international news stories  \n- 2 finance/market news stories\n\nYOUR BRIEFING STRUCTURE (follow this order):\n1. Weather & Health Advisory\n   - Current temperature and conditions\n   - Today's forecast and what to expect\n   - Week outlook\n   - Practical suggestions (what to wear, bring, health tips based on warnings)\n\n2. Local News\n   - Summarize each story in 2-3 sentences\n   - Explain why it matters to the reader personally\n\n3. International News\n   - Summarize each story in 2-3 sentences\n   - Explain the global significance and any HK connection\n\n4. Finance & Markets\n   - Summarize each story in 2-3 sentences\n   - Highlight impact on HK markets or everyday finances\n\nTONE & STYLE RULES:\n- Warm, professional, and conversational — like a trusted assistant\n- Concise but informative, never overly technical\n- Always end with a short motivational closing line for the day\n- Use emojis for section headers only\n- Write in cantonese"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1472,
+        -304
+      ],
+      "id": "cb1ad5fe-8749-48cb-807c-18807eaa908a",
+      "name": "AI Agent1",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "model": "grok-4.20-0309-non-reasoning",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        -160
+      ],
+      "id": "eacfa59f-9c87-46dc-b3a5-56ae3c26c9f7",
+      "name": "xAI Grok Chat Model1",
+      "credentials": {
+        "xAiApi": {
+          "id": "YOUR_XAI_CREDENTIAL_ID",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID_HERE",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1760,
+        -304
+      ],
+      "id": "55bfe173-b622-42fe-bac3-0fe34b49e37a",
+      "name": "Send a text message",
+      "webhookId": "98c4c5c6-40e4-4bcc-a520-d0d380fe33f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Find each data piece from the 5 items\nconst weather = items.find(i => i.json.generalSituation)?.json;\nconst conditions = items.find(i => i.json.current_conditions)?.json.current_conditions;\nconst local = items.find(i => i.json.local_top2)?.json.local_top2;\nconst international = items.find(i => i.json.international_top2)?.json.international_top2;\nconst finance = items.find(i => i.json.finance_top2)?.json.finance_top2;\n\nreturn [{\n  json: {\n    weather: {\n      situation: weather.generalSituation,\n      forecast: weather.forecastDesc,\n      outlook: weather.outlook,\n      updated_at: weather.updateTime\n    },\n    current_conditions: conditions,\n    local_top2: local,\n    international_top2: international,\n    finance_top2: finance,\n    generated_at: new Date().toISOString()\n  }\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -304
+      ],
+      "id": "09e0db77-caa1-478e-94b2-d0dd64d8b5db",
+      "name": "Code in JavaScript7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request (weather)": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (Temperature)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read (local new RTHK)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read (international new RTHK )",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read (finance new RTHK )1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request (weather)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (Temperature)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read (local new RTHK)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read (international new RTHK )": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read (finance new RTHK )1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript7": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}
