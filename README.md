@@ -34,17 +34,15 @@ Schedule Trigger → Weather + RSS feeds → AI filtering
 
 ## Data Sources
 - HK Observatory Weather API
-  https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=flw&lang=en
+- https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=flw&lang=en
   
 - Hong Kong Observatory Open Data API Documentation
-  https://www.hko.gov.hk/en/weatherAPI/doc/files/HKO_Open_Data_API_Documentation.pdf
+- https://www.hko.gov.hk/en/weatherAPI/doc/files/HKO_Open_Data_API_Documentation.pdf
   
 - RTHK RSS Feeds (Local, International, Finance)
-  https://rthk.hk/rthk/news/rss/e_expressnews_elocal.xml
-  
-  https://rthk.hk/rthk/news/rss/e_expressnews_einternational.xml
-  
-  https://rthk.hk/rthk/news/rss/e_expressnews_efinance.xml
+- https://rthk.hk/rthk/news/rss/e_expressnews_elocal.xml
+- https://rthk.hk/rthk/news/rss/e_expressnews_einternational.xml
+- https://rthk.hk/rthk/news/rss/e_expressnews_efinance.xml
   
 - Telegram APIs
-  https://core.telegram.org/
+- https://core.telegram.org/
